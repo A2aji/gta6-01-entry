@@ -24,6 +24,11 @@ const DIALOGUE = {
     ['MARA', 'The vault car is downtown. Take it. Bring it to the docks.'],
     ['JACE', 'Three stars for this one. Worth it.'],
   ],
+  m6: [
+    ['MARA', 'Last one. A VIP needs the beach before sunset. Four stars on you.'],
+    ['VIP', 'Drive like the sun is chasing us. Because it is.'],
+    ['JACE', 'Sunset Keys. Let us finish this.'],
+  ],
 };
 
 /**
@@ -65,6 +70,10 @@ export function createMissions(world, city) {
     if (id === 'm4') {
       world.state.wanted = Math.max(world.state.wanted, 2);
       mission.waypoint = { x: 2480, y: 960, name: 'Bay Bridge' };
+    }
+    if (id === 'm6') {
+      world.state.wanted = Math.max(world.state.wanted, 4);
+      mission.waypoint = { x: city.places.beach.x, y: city.places.beach.y, name: 'Solmar Beach' };
     }
     if (id === 'm5') {
       mission.phase = 'steal';
@@ -150,12 +159,15 @@ export function createMissions(world, city) {
         return complete(worldRef.state);
       }
     }
+    if (m.id === 'm6') {
+      if (dist < 90) return complete(worldRef.state);
+    }
     return false;
   }
 
   /** The next mission in the chain, or null when the story is done. */
   function next() {
-    const order = ['m1', 'm2', 'm3', 'm4', 'm5'];
+    const order = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
     for (const id of order) {
       if (!missions.completed.includes(id)) return id;
     }

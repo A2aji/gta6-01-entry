@@ -65,6 +65,7 @@ export function createWorld(random, city) {
     decayTimer: 0,
     seenTimer: 99, // seconds since the police last saw the player
     lastKnown: { x: city.playerSpawn.x, y: city.playerSpawn.y }, // last place the police saw the player
+    helicopter: { x: 0, y: 0, altitude: 0, active: false, angle: 0 },
     clock: 17.5 * 3600, // 17:30, golden hour
     time: 0,
     lastInteract: false,
@@ -136,6 +137,9 @@ export function createWorld(random, city) {
     state.wanted = 0;
     state.crimeTimer = 0;
     state.decayTimer = 0;
+    state.seenTimer = 99;
+    state.helicopter.active = false;
+    state.helicopter.altitude = 0;
     state.clock = 17.5 * 3600;
     state.time = 0;
     // Traffic cars on the roads.
@@ -563,6 +567,37 @@ export function createWorld(random, city) {
     }
   }
 
+  // Helicopter: at 3+ stars it spawns above the player, follows with a
+  // spotlight, and keeps the player "seen" while it is overhead. When the
+  // heat drops it flies away and switches off.
+  function stepHelicopter(dt) {
+    const h = state.helicopter;
+    if (state.wanted >= POLICE.helicopterAtStars && !h.active) {
+      h.active = true;
+      h.x = state.player.x + 300;
+      h.y = state.player.y - 300;
+      h.altitude = POLICE.helicopterAltitude;
+    }
+    if (!h.active) return;
+    if (state.wanted < POLICE.helicopterAtStars) {
+      h.altitude += 120 * dt;
+      if (h.altitude > 600) { h.active = false; h.altitude = 0; }
+      return;
+    }
+    const tx = state.player.x;
+    const ty = state.player.y;
+    const d = Math.hypot(tx - h.x, ty - h.y);
+    if (d > 40) {
+      const want = angleTo(h.x, h.y, tx, ty);
+      h.angle = want;
+      const speed = Math.min(POLICE.helicopterSpeed, d * 1.5);
+      h.x += Math.cos(want) * speed * dt;
+      h.y += Math.sin(want) * speed * dt;
+    }
+    // Spotlight on the player: the police keep seeing them.
+    if (d < 300) state.seenTimer = 0;
+  }
+
   function step(dt, input) {
     let events = 0;
     state.time += dt;
@@ -584,6 +619,7 @@ export function createWorld(random, city) {
     events = stepCombat(dt, input, events);
     events = stepGang(dt, events);
     events = stepPolice(dt, events);
+    stepHelicopter(dt);
     stepPickups(dt);
     stepParticles(dt);
     state.lastInteract = !!input.interact;

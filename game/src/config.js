@@ -66,6 +66,9 @@ export const POLICE = {
   roadblockAtStars: 3,
   giveUpAfter: 5, // seconds unseen before the police give up the chase
   seenRadius: 400, // inside this, the police can see the player
+  helicopterAtStars: 3, // wanted level that brings the helicopter
+  helicopterAltitude: 220,
+  helicopterSpeed: 380,
 };
 
 export const WANTED = {
@@ -84,6 +87,7 @@ export const MISSIONS = [
   { id: 'm3', name: 'Heat on the Strip', reward: 400, place: 'The Strip', text: 'The Vulture crew is on the Strip. Clear them out, then get away.' },
   { id: 'm4', name: 'Bay Bridge Run', reward: 600, place: 'Bridge', text: 'Timed delivery across the Bay Bridge. Two stars on you — do not stop.' },
   { id: 'm5', name: 'The Vault Job', reward: 1200, place: 'Docks', text: 'Steal the vault car and bring it to the docks. Three stars. Bring it home.' },
+  { id: 'm6', name: 'Sunset Keys', reward: 1500, place: 'Beach', text: 'VIP delivery to the beach at sunset. Four stars on you — do not stop.' },
 ];
 
 export const PALETTE = {
