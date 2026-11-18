@@ -62,6 +62,7 @@ export function createWorld(random, city) {
     skids: [],
     wanted: 0,
     crimeTimer: 0, // seconds since the last crime
+    crimeCooldown: 0, // seconds until another shot can raise the wanted level
     decayTimer: 0,
     seenTimer: 99, // seconds since the police last saw the player
     lastKnown: { x: city.playerSpawn.x, y: city.playerSpawn.y }, // last place the police saw the player
@@ -136,6 +137,7 @@ export function createWorld(random, city) {
     state.player.arrestTimer = 0;
     state.wanted = 0;
     state.crimeTimer = 0;
+    state.crimeCooldown = 0;
     state.decayTimer = 0;
     state.seenTimer = 99;
     state.helicopter.active = false;
@@ -442,6 +444,7 @@ export function createWorld(random, city) {
   function stepCombat(dt, input, events) {
     const p = state.player;
     if (state.shotsFiredTimer > 0) state.shotsFiredTimer -= dt;
+    if (state.crimeCooldown > 0) state.crimeCooldown -= dt;
     if (p.inCar || p.reload > 0) return events;
     if (!input.shoot) return events;
     if (p.ammo <= 0) {
@@ -457,7 +460,12 @@ export function createWorld(random, city) {
     const my = p.y + Math.sin(p.angle) * 18;
     addParticles(mx, my, 4, '#ffe08a', 200, 0.12, 3);
     events |= EVENT_SHOT;
-    events = addCrime(WANTED.shoot, events);
+    // Sustained fire draws heat, but only once per two seconds — a burst
+    // of pistol fire must not max out the wanted level on its own.
+    if (state.crimeCooldown <= 0) {
+      events = addCrime(WANTED.shoot, events);
+      state.crimeCooldown = 2;
+    }
     // Hit the nearest gang member, officer or pedestrian near the aim line.
     const targets = [
       ...state.gang.map((g) => ({ x: g.x, y: g.y, ref: g, kind: 'gang' })),
