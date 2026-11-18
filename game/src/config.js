@@ -58,12 +58,14 @@ export const PEDESTRIAN = {
 
 export const POLICE = {
   maxActive: 6,
-  speed: 560,
+  speed: 470,
   ramDamage: 8,
   arrestRadius: 34,
   arrestTime: 1.2,
   spawnDistance: 700,
   roadblockAtStars: 3,
+  giveUpAfter: 5, // seconds unseen before the police give up the chase
+  seenRadius: 400, // inside this, the police can see the player
 };
 
 export const WANTED = {
