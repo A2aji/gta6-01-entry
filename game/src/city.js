@@ -1,10 +1,11 @@
-// The city of Solmar Bay: its roads, blocks, buildings, park, beach, river,
-// bridge and docks, plus the road graph traffic drives on and the named places
-// missions point at. Built once from a seed; the same seed builds the same city.
+// The city of Solmar Bay: roads, blocks, buildings, the park, the beach,
+// the river, the bridge and the docks, plus the road graph traffic drives
+// on and the named places missions point at. Built once from a seed — the
+// same seed always builds the same city.
 import { CITY, PALETTE, WORLD } from './config.js';
 import { int, pick, range } from './random.js';
 
-const ROOFS = [
+const ROOF_COLORS = [
   PALETTE.roofTerracotta,
   PALETTE.roofCoral,
   PALETTE.roofCream,
@@ -14,7 +15,7 @@ const ROOFS = [
 
 const CAR_COLORS = ['#d94f3d', '#3d7dd9', '#e8e8e8', '#22262b', '#4caf6d', '#e0a83c', '#7d5ba6', '#c0c8d0'];
 
-/** True when the point is on a road (asphalt) rather than inside a block. */
+/** True when the point sits on asphalt rather than inside a block. */
 export function onRoad(city, x, y) {
   const half = CITY.roadWidth / 2;
   for (const rx of CITY.verticalRoads) if (Math.abs(x - rx) <= half) return true;
@@ -30,7 +31,7 @@ export function inBuilding(city, x, y) {
   return false;
 }
 
-/** The nearest point on the road graph to (x, y), for snapping spawns. */
+/** The road-graph node nearest (x, y), for snapping spawns onto roads. */
 export function nearestNode(city, x, y) {
   let best = city.roadGraph.nodes[0];
   let bestD = Infinity;
@@ -42,9 +43,14 @@ export function nearestNode(city, x, y) {
 }
 
 export function createCity(random) {
+  // Road slabs: verticals run to the beach, horizontals stop at the river.
   const roads = [];
-  for (const x of CITY.verticalRoads) roads.push({ x: x - CITY.roadWidth / 2, y: 0, w: CITY.roadWidth, h: CITY.beachTop, vertical: true });
-  for (const y of CITY.horizontalRoads) roads.push({ x: 0, y: y - CITY.roadWidth / 2, w: CITY.riverLeft, h: CITY.roadWidth, vertical: false });
+  for (const x of CITY.verticalRoads) {
+    roads.push({ x: x - CITY.roadWidth / 2, y: 0, w: CITY.roadWidth, h: CITY.beachTop, vertical: true });
+  }
+  for (const y of CITY.horizontalRoads) {
+    roads.push({ x: 0, y: y - CITY.roadWidth / 2, w: CITY.riverLeft, h: CITY.roadWidth, vertical: false });
+  }
 
   // Buildings fill every block except the park block and the docks.
   const buildings = [];
@@ -62,12 +68,12 @@ export function createCity(random) {
         const h = range(random, 70, 150);
         const x = x0 + range(random, 8, Math.max(9, blockW - w - 8));
         const y = y0 + range(random, 8, Math.max(9, blockW - h - 8));
-        buildings.push({ x, y, w, h, roof: pick(random, ROOFS), height: int(random, 1, 3) });
+        buildings.push({ x, y, w, h, roof: pick(random, ROOF_COLORS), height: int(random, 1, 3) });
       }
     }
   }
 
-  // Road graph: one node per intersection, edges to each neighbour along a road.
+  // Road graph: one node per intersection, linked to its neighbours.
   const nodes = [];
   const nodeAt = new Map();
   for (const x of CITY.verticalRoads) {
@@ -88,11 +94,10 @@ export function createCity(random) {
     for (const m of neighbours) if (m) n.next.push(m.id);
   }
 
-  // Car spawn points: on roads, away from intersections.
+  // Car spawns: on roads, clear of intersections.
   const carSpawns = [];
   for (let i = 0; i < 60; i += 1) {
-    const vertical = random() < 0.5;
-    if (vertical) {
+    if (random() < 0.5) {
       const x = pick(random, CITY.verticalRoads) + (random() < 0.5 ? -16 : 16);
       carSpawns.push({ x, y: range(random, 100, CITY.beachTop - 100), angle: random() < 0.5 ? Math.PI / 2 : -Math.PI / 2 });
     } else {
@@ -101,11 +106,10 @@ export function createCity(random) {
     }
   }
 
-  // Pedestrian spawn points: on sidewalks beside roads.
+  // Pedestrian spawns: on the sidewalks beside roads.
   const pedSpawns = [];
   for (let i = 0; i < 80; i += 1) {
-    const vertical = random() < 0.5;
-    if (vertical) {
+    if (random() < 0.5) {
       const x = pick(random, CITY.verticalRoads) + (random() < 0.5 ? -44 : 44);
       pedSpawns.push({ x, y: range(random, 60, CITY.beachTop - 60) });
     } else {

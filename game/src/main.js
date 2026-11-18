@@ -1,19 +1,20 @@
-// Solmar Bay — boot and the one loop: input is read every frame, the world
-// advances in fixed 1/60 s steps, and the renderer paints what is there.
-// Screens: title, play, paused, complete, busted, wasted.
+// Solmar Bay — boot and the one loop. Each frame reads the input, advances
+// the world in fixed 1/60 s steps, and paints what is there. Screens: title,
+// play, paused, complete, busted, wasted.
 // ?seed=N fixes the city. ?shot=cover|title|street|mission (with &seed=N)
 // stages that scene instead of running the loop, paints it, and sets
-// window.__shotReady for a screenshot.
+// window.__shotReady so a screenshot can be taken.
 import { SAVE_KEY, STEP } from './config.js';
 import { createRandom } from './random.js';
 import { createCity } from './city.js';
-import { createWorld, EVENT_BUSTED, EVENT_SHOT, EVENT_WASTED, EVENT_PICKUP } from './world.js';
+import { createWorld, EVENT_BUSTED, EVENT_PICKUP, EVENT_SHOT, EVENT_WASTED } from './world.js';
 import { createMissions } from './missions.js';
 import { ACTION_CONFIRM, ACTION_ENTER, ACTION_INTERACT, ACTION_MUTE, ACTION_PAUSE, ACTION_RADIO, createInput } from './input.js';
 import { createRenderer, SCREEN_BUSTED, SCREEN_COMPLETE, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE, SCREEN_WASTED } from './render.js';
 import { createAudio } from './audio.js';
 import { stageShot } from './shots.js';
 
+// A tab that was hidden for a while must not dump a huge catch-up step.
 const MAX_FRAME = 0.25;
 
 const params = new URLSearchParams(window.location.search);
@@ -48,6 +49,8 @@ function writeSave(save) {
   }
 }
 
+// A staged screenshot: run the scene's script, then paint ~40 frames so the
+// chase camera eases onto the player, and flag the shot as ready.
 function runShot(name) {
   const staged = stageShot(name, world, missions, city, seed);
   const ui = {
@@ -74,8 +77,6 @@ function runShot(name) {
   function paint() {
     renderer.draw(world.state, staged.screen, ui, 1 / 60, 6);
     painted += 1;
-    // The chase camera eases from its start position; ~40 paints converge
-    // it on the player, so the shot shows the framed view, not the swoop.
     if (painted < 40) requestAnimationFrame(paint);
     else {
       window.__shotReady = true;
@@ -94,6 +95,7 @@ function runGame() {
   let accumulator = 0;
   let last = performance.now();
   let time = 0;
+  let pendingActions = 0;
 
   function announce(message) {
     status.textContent = message;
@@ -110,10 +112,7 @@ function runGame() {
     world.reset();
     missions.current = null;
     missions.completed = [];
-    if (fromSave) {
-      const save = readSave();
-      applySave(save);
-    }
+    if (fromSave) applySave(readSave());
     const next = missions.next();
     if (next) missions.start(next);
     accumulator = 0;
@@ -123,10 +122,8 @@ function runGame() {
   }
 
   function endGame(kind) {
-    if (kind === 'busted') screen = SCREEN_BUSTED;
-    else screen = SCREEN_WASTED;
-    const save = { cash: world.state.player.cash, completed: missions.completed, best };
-    writeSave(save);
+    screen = kind === 'busted' ? SCREEN_BUSTED : SCREEN_WASTED;
+    writeSave({ cash: world.state.player.cash, completed: missions.completed, best });
     announce(kind === 'busted' ? 'Busted. The Solmar Bay PD has you.' : 'Wasted. Jace is down.');
   }
 
@@ -142,19 +139,20 @@ function runGame() {
   }
 
   function worldInput() {
-    const h = input.held;
+    const held = input.held;
     const mouse = input.mouse();
     const aim = renderer.aimPoint(mouse.x, mouse.y);
     return {
-      up: h.up, down: h.down, left: h.left, right: h.right,
-      sprint: h.sprint, handbrake: h.handbrake,
+      up: held.up, down: held.down, left: held.left, right: held.right,
+      sprint: held.sprint, handbrake: held.handbrake,
       enter: false, shoot: input.shoot, interact: false,
       aimX: aim.x, aimY: aim.y,
     };
   }
 
+  // One simulation step: feed the world this frame's input (one-shot
+  // actions apply to this step only), then react to what happened.
   function step() {
-    // One-shot actions feed the world input this step only.
     const actions = pendingActions;
     pendingActions = 0;
     const inputState = worldInput();
@@ -170,16 +168,16 @@ function runGame() {
     audio.setSiren(world.state.wanted > 0);
   }
 
-  let pendingActions = 0;
-  // takeActions is consumed once per frame; hold the flags for the steps.
-  const origTake = input.takeActions.bind(input);
+  // The input's takeActions is consumed once per frame; the flags it returns
+  // are held here so every fixed step in the frame sees them.
+  const takeHeld = input.takeActions.bind(input);
 
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, MAX_FRAME);
     last = now;
     time += dt;
-    pendingActions |= origTake();
+    pendingActions |= takeHeld();
     if (pendingActions & ACTION_MUTE) {
       audio.toggleMute();
       pendingActions &= ~ACTION_MUTE;

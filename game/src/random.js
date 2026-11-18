@@ -1,40 +1,42 @@
-// Seeded random numbers, so a seed always builds the same city and the same
-// screenshot scene. mulberry32: small, fast, and good enough for a game.
+// Seeded randomness for Solmar Bay. One seed builds the same city and the
+// same screenshot scenes every time, so a run is reproducible.
+// mulberry32 — tiny, fast, and plenty good enough for a game.
 
+/** A generator function returning floats in [0, 1). */
 export function createRandom(seed) {
-  let a = seed >>> 0;
-  return function random() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  let state = seed >>> 0;
+  return function next() {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-/** A float in [min, max). */
+/** Float in [min, max). */
 export function range(random, min, max) {
   return min + random() * (max - min);
 }
 
-/** An integer in [min, max] inclusive. */
+/** Whole number in [min, max], both ends included. */
 export function int(random, min, max) {
   return Math.floor(range(random, min, max + 1));
 }
 
-/** One element of an array. */
-export function pick(random, array) {
-  return array[Math.floor(random() * array.length)];
+/** One element, chosen at random. */
+export function pick(random, items) {
+  return items[Math.floor(random() * items.length)];
 }
 
-/** A shuffled copy of an array (Fisher-Yates). */
-export function shuffle(random, array) {
-  const out = array.slice();
+/** A shuffled copy (Fisher-Yates); the input array is untouched. */
+export function shuffle(random, items) {
+  const out = items.slice();
   for (let i = out.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));
-    const tmp = out[i];
+    const held = out[i];
     out[i] = out[j];
-    out[j] = tmp;
+    out[j] = held;
   }
   return out;
 }

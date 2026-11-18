@@ -26,7 +26,7 @@ function angleDiff(a, b) {
   return d;
 }
 
-/** Move a circle out of building rects and the sea/river, axis by axis. */
+/** Slide a circle out of building rects and the sea/river, axis by axis. */
 function collideCircle(city, p, radius) {
   p.x = Math.max(radius, Math.min(WORLD.width - radius, p.x));
   p.y = Math.max(radius, Math.min(WORLD.height - radius, p.y));
@@ -55,7 +55,7 @@ export function createWorld(random, city) {
     },
     vehicles: [],
     pedestrians: [],
-    police: [], // officers on foot (their cars are in vehicles with driver 'police')
+    police: [], // officers on foot (their cars live in vehicles with driver 'police')
     gang: [], // rival crew members, spawned by missions
     pickups: [],
     particles: [],
@@ -65,7 +65,7 @@ export function createWorld(random, city) {
     crimeCooldown: 0, // seconds until another shot can raise the wanted level
     decayTimer: 0,
     seenTimer: 99, // seconds since the police last saw the player
-    lastKnown: { x: city.playerSpawn.x, y: city.playerSpawn.y }, // last place the police saw the player
+    lastKnown: { x: city.playerSpawn.x, y: city.playerSpawn.y },
     helicopter: { x: 0, y: 0, altitude: 0, active: false, angle: 0 },
     clock: 17.5 * 3600, // 17:30, golden hour
     time: 0,
@@ -103,7 +103,11 @@ export function createWorld(random, city) {
     for (let i = 0; i < count; i += 1) {
       const a = random() * TAU;
       const s = range(random, speed * 0.3, speed);
-      state.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: range(random, life * 0.5, life), maxLife: life, color, size: range(random, size * 0.6, size * 1.4) });
+      state.particles.push({
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: range(random, life * 0.5, life), maxLife: life,
+        color, size: range(random, size * 0.6, size * 1.4),
+      });
     }
     if (state.particles.length > 400) state.particles.splice(0, state.particles.length - 400);
   }
@@ -124,17 +128,18 @@ export function createWorld(random, city) {
     state.pickups.length = 0;
     state.particles.length = 0;
     state.skids.length = 0;
-    state.player.x = city.playerSpawn.x;
-    state.player.y = city.playerSpawn.y;
-    state.player.angle = -Math.PI / 2;
-    state.player.health = PLAYER.health;
-    state.player.ammo = PLAYER.pistolAmmo;
-    state.player.reload = 0;
-    state.player.inCar = null;
-    state.player.cash = 0;
-    state.player.dead = false;
-    state.player.busted = false;
-    state.player.arrestTimer = 0;
+    const p = state.player;
+    p.x = city.playerSpawn.x;
+    p.y = city.playerSpawn.y;
+    p.angle = -Math.PI / 2;
+    p.health = PLAYER.health;
+    p.ammo = PLAYER.pistolAmmo;
+    p.reload = 0;
+    p.inCar = null;
+    p.cash = 0;
+    p.dead = false;
+    p.busted = false;
+    p.arrestTimer = 0;
     state.wanted = 0;
     state.crimeTimer = 0;
     state.crimeCooldown = 0;
@@ -148,7 +153,10 @@ export function createWorld(random, city) {
     const spawns = city.carSpawns.slice();
     for (let i = 0; i < TRAFFIC.count; i += 1) {
       const s = spawns[int(random, 0, spawns.length - 1)];
-      const v = spawnVehicle(s.x + range(random, -8, 8), s.y + range(random, -8, 8), s.angle, pick(random, CAR_KINDS), pick(random, city.carColors), 'traffic');
+      const v = spawnVehicle(
+        s.x + range(random, -8, 8), s.y + range(random, -8, 8), s.angle,
+        pick(random, CAR_KINDS), pick(random, city.carColors), 'traffic',
+      );
       v.targetNode = nearestNode(city, v.x, v.y).id;
       v.speed = TRAFFIC.speed;
     }
@@ -187,7 +195,9 @@ export function createWorld(random, city) {
     const p = state.player;
     if (input.up) car.speed = Math.min(CAR.maxSpeed, car.speed + CAR.accel * dt);
     else if (input.down) {
-      car.speed = car.speed > 0 ? Math.max(0, car.speed - CAR.brake * dt) : Math.max(-CAR.maxReverse, car.speed - CAR.reverseAccel * dt);
+      car.speed = car.speed > 0
+        ? Math.max(0, car.speed - CAR.brake * dt)
+        : Math.max(-CAR.maxReverse, car.speed - CAR.reverseAccel * dt);
     } else {
       car.speed *= Math.max(0, 1 - 2.2 * dt);
       if (Math.abs(car.speed) < 4) car.speed = 0;
@@ -228,7 +238,10 @@ export function createWorld(random, city) {
     }
     if (car.health < 100 * CAR.damageSmoke) {
       car.smoke += dt;
-      if (car.smoke > 0.12) { car.smoke = 0; addParticles(car.x, car.y, 1, '#888888', 40, 1.2, 6); }
+      if (car.smoke > 0.12) {
+        car.smoke = 0;
+        addParticles(car.x, car.y, 1, '#888888', 40, 1.2, 6);
+      }
     }
     if (car.health <= 0) {
       addParticles(car.x, car.y, 30, '#ff9f43', 260, 0.8, 5);
@@ -242,7 +255,7 @@ export function createWorld(random, city) {
     }
   }
 
-  function enterExitCar(input) {
+  function enterExitCar() {
     const p = state.player;
     if (p.inCar) {
       const car = p.inCar;
@@ -253,7 +266,7 @@ export function createWorld(random, city) {
       p.x = car.x + Math.cos(car.angle + Math.PI / 2) * 40;
       p.y = car.y + Math.sin(car.angle + Math.PI / 2) * 40;
       collideCircle(city, p, PLAYER.radius);
-      return;
+      return null;
     }
     let best = null;
     let bestD = 60;
@@ -315,9 +328,14 @@ export function createWorld(random, city) {
       }
       // Flee gunfire and fast cars.
       const threat = state.shotsFired > 0 && state.shotsFiredTimer > 0;
-      const carNear = state.player.inCar && Math.hypot(ped.x - state.player.x, ped.y - state.player.y) < 90 && Math.abs(state.player.inCar.speed) > 100;
+      const carNear = state.player.inCar
+        && Math.hypot(ped.x - state.player.x, ped.y - state.player.y) < 90
+        && Math.abs(state.player.inCar.speed) > 100;
       if (threat || carNear) ped.state = 'flee';
-      else if (ped.state === 'flee' && Math.hypot(ped.x - state.player.x, ped.y - state.player.y) > PEDESTRIAN.fleeRadius) ped.state = 'walk';
+      else if (ped.state === 'flee'
+        && Math.hypot(ped.x - state.player.x, ped.y - state.player.y) > PEDESTRIAN.fleeRadius) {
+        ped.state = 'walk';
+      }
       const speed = ped.state === 'flee' ? PEDESTRIAN.fleeSpeed : PEDESTRIAN.speed;
       if (!ped.target || Math.hypot(ped.target.x - ped.x, ped.target.y - ped.y) < 12) {
         const s = city.pedSpawns[int(random, 0, city.pedSpawns.length - 1)];
@@ -335,10 +353,10 @@ export function createWorld(random, city) {
   }
 
   function stepPolice(dt, events) {
-    // Whether any police car can see the player right now. A sighting updates
-    // the last known position; otherwise the police search where they last
-    // saw the player, and give up after a while unseen — so a player who
-    // breaks away and hides really does lose the heat.
+    // Whether any police car can see the player right now. A sighting
+    // updates the last known position; otherwise the police search where
+    // they last saw the player, and give up after a while unseen — so a
+    // player who breaks away and hides really does lose the heat.
     const policeNear = state.vehicles.some((v) => v.driver === 'police'
       && Math.hypot(v.x - state.player.x, v.y - state.player.y) < POLICE.seenRadius);
     if (policeNear) {
@@ -346,8 +364,8 @@ export function createWorld(random, city) {
       state.lastKnown = { x: state.player.x, y: state.player.y };
     } else state.seenTimer += dt;
 
-    // The police give up the chase after a while unseen: their cars become
-    // parked again and the officers leave, so the wanted level can decay.
+    // The police give up after a while unseen: their cars park again and
+    // the officers leave, so the wanted level can decay.
     if (state.seenTimer > POLICE.giveUpAfter) {
       for (const v of state.vehicles) if (v.driver === 'police') { v.driver = null; v.speed = 0; }
       state.police.length = 0;
@@ -358,20 +376,24 @@ export function createWorld(random, city) {
     const wantCount = Math.min(POLICE.maxActive, Math.ceil(state.wanted / 2) + (state.wanted >= 3 ? 1 : 0));
     const activeCars = state.vehicles.filter((v) => v.driver === 'police').length;
     if (state.wanted > 0 && state.seenTimer < 8 && activeCars < wantCount && state.time % 1 < dt) {
-      const node = nearestNode(city, state.lastKnown.x + range(random, -1, 1) * POLICE.spawnDistance, state.lastKnown.y + range(random, -1, 1) * POLICE.spawnDistance);
+      const node = nearestNode(city,
+        state.lastKnown.x + range(random, -1, 1) * POLICE.spawnDistance,
+        state.lastKnown.y + range(random, -1, 1) * POLICE.spawnDistance);
       const car = spawnVehicle(node.x, node.y, 0, 'police', '#2b4acb', 'police');
       car.targetNode = nearestNode(city, state.lastKnown.x, state.lastKnown.y).id;
       car.speed = POLICE.speed * 0.7;
     }
-    // Police cars chase the player's position — live while they can see the
-    // player, the last known position once they lose sight of them.
+    // Police cars chase the player's position — live while they can see
+    // the player, the last known position once they lose sight of them.
     for (const v of state.vehicles) {
       if (v.driver !== 'police') continue;
       const seesPlayer = Math.hypot(state.player.x - v.x, state.player.y - v.y) < POLICE.seenRadius;
       const target = nearestNode(city,
         seesPlayer ? state.player.x : state.lastKnown.x,
         seesPlayer ? state.player.y : state.lastKnown.y);
-      if (v.targetNode === undefined || v.targetNode === null || state.time % 0.5 < dt) v.targetNode = target.id;
+      if (v.targetNode === undefined || v.targetNode === null || state.time % 0.5 < dt) {
+        v.targetNode = target.id;
+      }
       const node = city.roadGraph.nodes[v.targetNode];
       const d = Math.hypot(node.x - v.x, node.y - v.y);
       if (d < 30) {
@@ -571,7 +593,10 @@ export function createWorld(random, city) {
   // Mission helpers the missions module calls.
   function spawnGang(x, y, count) {
     for (let i = 0; i < count; i += 1) {
-      state.gang.push({ x: x + range(random, -40, 40), y: y + range(random, -40, 40), angle: random() * TAU, health: 100, shootTimer: range(random, 0.5, 1.5), dead: false });
+      state.gang.push({
+        x: x + range(random, -40, 40), y: y + range(random, -40, 40),
+        angle: random() * TAU, health: 100, shootTimer: range(random, 0.5, 1.5), dead: false,
+      });
     }
   }
 
@@ -613,7 +638,7 @@ export function createWorld(random, city) {
     if (state.player.dead || state.player.busted) return events;
 
     if (input.enter) {
-      const result = enterExitCar(input);
+      const result = enterExitCar();
       if (result === 'stolen') events = addCrime(WANTED.stealCar, events);
     }
     if (state.player.inCar) stepPlayerInCar(dt, input);

@@ -32,7 +32,7 @@ function cover(world, missions) {
   // two and a half seconds while they close in — then it drives off. The
   // long final run pulls the player away from the rammers, so the cruisers
   // trail behind the car instead of filling the camera, and the run ends
-  // on the beach road with the sea ahead.
+  // mid-city with the chase behind.
   drive(state, world, 90, { ...IDLE, up: true });
   state.wanted = 3;
   state.crimeTimer = 0;

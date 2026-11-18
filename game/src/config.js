@@ -1,19 +1,24 @@
-// Solmar Bay — every tuning number and colour in one place.
-// The city is a fixed 2560x1920 logical area; the renderer scales the camera
-// view to the window, so no rule below depends on the screen size.
+// Solmar Bay — every tuning number and colour, in one place.
+// The world is a fixed 2560x1920 logical area. The renderer scales the
+// camera to the window, so nothing below depends on the screen size.
 
+/** Logical size of the city. */
 export const WORLD = { width: 2560, height: 1920 };
+
+/** Reference frame the screenshots are taken at. */
 export const VIEW = { width: 1280, height: 720 };
+
+/** One simulation step, in seconds. */
 export const STEP = 1 / 60;
 
-/** The city grid: roads run on these centrelines, 64 wide, blocks between them. */
+/** The road grid: centrelines, 64 wide, with blocks between them. */
 export const CITY = {
   roadWidth: 64,
   verticalRoads: [320, 640, 960, 1280, 1600, 1920, 2240],
   horizontalRoads: [320, 640, 960, 1280, 1600],
-  beachTop: 1760, // south edge: sand, then sea
-  riverLeft: 2400, // east edge: river strip with a bridge on the y=960 road
-  parkBlock: { x: 960, y: 640 }, // the block whose corner is at (960, 640)
+  beachTop: 1760, // south edge: sand, then the sea
+  riverLeft: 2400, // east edge: river strip, bridged on the y=960 road
+  parkBlock: { x: 960, y: 640 }, // block corner where the park sits
   docks: { x: 0, y: 1280, width: 320, height: 320 },
 };
 
@@ -39,7 +44,7 @@ export const CAR = {
   steer: 2.6,
   grip: 6.0,
   handbrakeGrip: 1.6,
-  damageSmoke: 0.55, // health fraction where smoke starts
+  damageSmoke: 0.55, // health fraction where the smoke starts
 };
 
 export const TRAFFIC = {
@@ -64,9 +69,9 @@ export const POLICE = {
   arrestTime: 1.2,
   spawnDistance: 700,
   roadblockAtStars: 3,
-  giveUpAfter: 5, // seconds unseen before the police give up the chase
+  giveUpAfter: 5, // seconds unseen before the chase is called off
   seenRadius: 400, // inside this, the police can see the player
-  helicopterAtStars: 3, // wanted level that brings the helicopter
+  helicopterAtStars: 3, // wanted level that brings the helicopter in
   helicopterAltitude: 220,
   helicopterSpeed: 380,
 };
@@ -76,11 +81,12 @@ export const WANTED = {
   hitPedestrian: 1,
   shoot: 1,
   killPolice: 2,
-  decayDelay: 12, // seconds with no crime before stars start falling
+  decayDelay: 12, // quiet seconds before stars start falling
   decayInterval: 9, // seconds per star lost while hidden
   maxStars: 5,
 };
 
+/** The six-job story chain, in order. */
 export const MISSIONS = [
   { id: 'm1', name: 'First Ride', reward: 150, place: 'The Strip', text: 'Drive the client to the marker on the north end of the Strip.' },
   { id: 'm2', name: 'The Pickup', reward: 250, place: 'Docks', text: 'On foot: collect the package at the docks. The cops are watching.' },
@@ -90,6 +96,7 @@ export const MISSIONS = [
   { id: 'm6', name: 'Sunset Keys', reward: 1500, place: 'Beach', text: 'VIP delivery to the beach at sunset. Four stars on you — do not stop.' },
 ];
 
+/** Sun-soaked palette: warm asphalt, terracotta roofs, turquoise sea. */
 export const PALETTE = {
   backdrop: '#10141f',
   ground: '#9aa06b',

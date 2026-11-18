@@ -1,6 +1,7 @@
-// Solmar Bay — the story. Five missions in a chain, each a small state machine:
-// a waypoint to reach, something to do there, and a reward. The world module
-// owns the simulation; missions only read it and ask it to spawn things.
+// Solmar Bay — the story. Six missions in a chain, each a small state
+// machine: a waypoint to reach, something to do there, and a reward.
+// The world module owns the simulation; missions only read it and ask it
+// to spawn things.
 import { MISSIONS } from './config.js';
 
 const DIALOGUE = {
@@ -32,10 +33,10 @@ const DIALOGUE = {
 };
 
 /**
- * A mission's waypoint and what "done" means for each phase.
+ * What "done" means for each mission's phases.
  * M1: reach the Strip. M2: pick up the package, then lose the cops.
  * M3: clear the gang, then leave the area. M4: cross the bridge in time.
- * M5: steal the vault car, deliver it to the docks.
+ * M5: steal the vault car, deliver it to the docks. M6: reach the beach.
  */
 export function createMissions(world, city) {
   const defs = new Map(MISSIONS.map((m) => [m.id, m]));

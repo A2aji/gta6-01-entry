@@ -130,10 +130,10 @@ export function createRenderer(canvas, hudCanvas) {
         }`,
     });
     scene.add(new THREE.Mesh(new THREE.SphereGeometry(1900, 24, 12), skyMat));
-    const sun = new THREE.Mesh(new THREE.CircleGeometry(55, 24), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
-    sun.position.copy(sunDir).multiplyScalar(1750);
-    sun.lookAt(0, 0, 0);
-    scene.add(sun);
+    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(55, 24), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false }));
+    sunDisc.position.copy(sunDir).multiplyScalar(1750);
+    sunDisc.lookAt(0, 0, 0);
+    scene.add(sunDisc);
     const glow = new THREE.Mesh(new THREE.CircleGeometry(170, 24), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     glow.position.copy(sunDir).multiplyScalar(1740);
     glow.lookAt(0, 0, 0);
@@ -228,7 +228,7 @@ export function createRenderer(canvas, hudCanvas) {
       scene.add(mesh);
     }
 
-    // Park: grass circle, trees, pond.
+    // Park: pond and trees.
     const park = city.park;
     const pond = cyl(46, 2, 0x2e7f9e, toX(park.x + park.w / 2), 1.2, toZ(park.y + park.h / 2));
     scene.add(pond);
@@ -308,7 +308,7 @@ export function createRenderer(canvas, hudCanvas) {
     return mesh;
   }
 
-  function syncVehicles(state, time) {
+  function syncVehicles(state) {
     for (const v of state.vehicles) {
       const mesh = carMeshFor(v);
       mesh.position.set(toX(v.x), 0, toZ(v.y));

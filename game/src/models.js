@@ -1,7 +1,7 @@
 // Solmar Bay — procedural model factories (three.js).
 // Every visible thing is authored here from primitives: no imported assets,
-// no generator keys. Shared unit geometries + a material library keep the
-// draw-call and memory budgets small; one material per colour, cached.
+// no generator keys. Shared unit geometries plus a material library keep
+// draw calls and memory small; one material per colour, cached.
 import * as THREE from '../vendor/three.module.min.js';
 
 const GEO = {
@@ -48,7 +48,7 @@ export function sphere(r, color, x = 0, y = 0, z = 0, opts) {
   return m;
 }
 
-/** A building: facade block, flat roof slab, windows on the faces, an AC unit. */
+/** A building: facade block, flat roof slab, windows on every face, an AC unit. */
 export function makeBuilding(w, d, height, roofColor, facadeColor) {
   const g = new THREE.Group();
   const body = box(w, height, d, facadeColor, 0, height / 2, 0);
@@ -152,7 +152,7 @@ export function makePerson(jacket, skin = 0xc98e6b, pants = 0x2a3442) {
   return g;
 }
 
-/** A palm: trunk + a crown of leaves. */
+/** A palm: trunk plus a crown of leaves. */
 export function makePalm() {
   const g = new THREE.Group();
   const trunk = cyl(3, 52, 0x7a5a38, 0, 26, 0);
@@ -191,7 +191,10 @@ export function makeHelicopter() {
   g.add(skidL, skidR);
   // Spotlight cone, pointing down (apex at the helicopter).
   const coneGeo = new THREE.ConeGeometry(70, 220, 20, 1, true);
-  const coneMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false });
+  const coneMat = new THREE.MeshBasicMaterial({
+    color: 0xfff2b0, transparent: true, opacity: 0.14,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
   const cone = new THREE.Mesh(coneGeo, coneMat);
   cone.rotation.x = Math.PI;
   cone.position.y = -110;
@@ -217,7 +220,9 @@ export function makeProp(kind, color = 0x8a8f96) {
     c.receiveShadow = true;
     g.add(c);
     // Door ribs and a top rail, so the box reads as a container, not a slab.
-    for (const rx of [-18, -6, 6, 18]) g.add(box(2, 20, 1, 0x000000, rx, 11, 10.4, { opacity: 0.25, transparent: true }));
+    for (const rx of [-18, -6, 6, 18]) {
+      g.add(box(2, 20, 1, 0x000000, rx, 11, 10.4, { opacity: 0.25, transparent: true }));
+    }
     g.add(box(60, 2, 21, 0x000000, 0, 21, 0, { opacity: 0.2, transparent: true }));
   } else if (kind === 'tree') {
     const trunk = cyl(2.4, 22, 0x6b4a2a, 0, 11, 0);
