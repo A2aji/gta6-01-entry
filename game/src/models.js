@@ -1,7 +1,9 @@
 // Solmar Bay — procedural model factories (three.js).
 // Every visible thing is authored here from primitives: no imported assets,
 // no generator keys. Shared unit geometries plus a material library keep
-// draw calls and memory small; one material per colour, cached.
+// draw calls and memory small; one material per colour, cached. A building
+// is a facade block with a roof, windows on all four faces, an AC unit, and
+// — for shops — a street-level awning; some windows glow warm at dusk.
 import * as THREE from '../vendor/three.module.min.js';
 
 const GEO = {
@@ -48,8 +50,23 @@ export function sphere(r, color, x = 0, y = 0, z = 0, opts) {
   return m;
 }
 
-/** A building: facade block, flat roof slab, windows on every face, an AC unit. */
-export function makeBuilding(w, d, height, roofColor, facadeColor) {
+const WINDOW_DARK = 0x1d2733;
+const WINDOW_LIT = 0xffc46b;
+
+/** One window pane; a few glow warm so the city feels lived-in at dusk. */
+function windowPane(w, h, x, y, z, lit) {
+  const color = lit ? WINDOW_LIT : WINDOW_DARK;
+  const opts = lit ? { emissive: 0xff9f43 } : undefined;
+  return box(w, h, 1, color, x, y, z, opts);
+}
+
+/**
+ * A building: facade block, flat roof slab, windows on every face, an AC
+ * unit on the roof, and — for shops — a striped awning at street level.
+ * `shop` and `lit` come from the city data; tall buildings get a water
+ * tower from the renderer, not from here.
+ */
+export function makeBuilding(w, d, height, roofColor, facadeColor, shop = false, lit = false) {
   const g = new THREE.Group();
   const body = box(w, height, d, facadeColor, 0, height / 2, 0);
   body.castShadow = true;
@@ -60,16 +77,18 @@ export function makeBuilding(w, d, height, roofColor, facadeColor) {
   g.add(roof);
   const ac = box(14, 6, 10, 0x8a8f96, w / 4, height + 6, 0);
   g.add(ac);
-  // Windows: dark inset panes on the two long faces.
+  // Windows on the two long faces; every third pane glows when lit.
   const cols = Math.max(2, Math.floor(w / 34));
   const rows = Math.max(1, Math.floor(height / 34));
+  let paneIndex = 0;
   for (let c = 0; c < cols; c += 1) {
     for (let r = 0; r < rows; r += 1) {
       const wx = -w / 2 + ((c + 0.5) / cols) * w;
       const wy = 14 + ((r + 0.5) / rows) * (height - 20);
-      const winA = box(12, 14, 1, 0x1d2733, wx, wy, d / 2 + 0.6);
-      const winB = box(12, 14, 1, 0x1d2733, wx, wy, -d / 2 - 0.6);
-      g.add(winA, winB);
+      const glow = lit && (paneIndex % 3 === 0);
+      paneIndex += 1;
+      g.add(windowPane(12, 14, wx, wy, d / 2 + 0.6, glow));
+      g.add(windowPane(12, 14, wx, wy, -d / 2 - 0.6, glow));
     }
   }
   // Windows on the two short (side) faces too — a chase cam sees those most.
@@ -79,9 +98,17 @@ export function makeBuilding(w, d, height, roofColor, facadeColor) {
     for (let r = 0; r < sideRows; r += 1) {
       const wz = -d / 2 + ((c + 0.5) / sideCols) * d;
       const wy = 14 + ((r + 0.5) / sideRows) * (height - 20);
-      g.add(box(1, 14, 12, 0x1d2733, w / 2 + 0.6, wy, wz));
-      g.add(box(1, 14, 12, 0x1d2733, -w / 2 - 0.6, wy, wz));
+      g.add(box(1, 14, 12, WINDOW_DARK, w / 2 + 0.6, wy, wz));
+      g.add(box(1, 14, 12, WINDOW_DARK, -w / 2 - 0.6, wy, wz));
     }
+  }
+  // Shopfront awning: a striped slab over the door on the south face.
+  if (shop) {
+    const awn = box(Math.min(w * 0.6, 70), 3, 22, 0xe07856, 0, 22, d / 2 + 10);
+    awn.castShadow = true;
+    g.add(awn);
+    g.add(box(4, 18, 2, 0x3a2a1a, -w * 0.2, 9, d / 2 + 0.6));
+    g.add(box(4, 18, 2, 0x3a2a1a, w * 0.2, 9, d / 2 + 0.6));
   }
   return g;
 }
@@ -204,7 +231,27 @@ export function makeHelicopter() {
   return g;
 }
 
-/** Street props: lamp, hydrant, container, tree. */
+/** A rooftop water tower: legs, tank, conical cap. */
+export function makeWaterTower() {
+  const g = new THREE.Group();
+  for (const [lx, lz] of [[-10, -10], [-10, 10], [10, -10], [10, 10]]) {
+    g.add(box(2, 14, 2, 0x5a4a3a, lx, 7, lz));
+  }
+  const tank = cyl(13, 20, 0x8a6a4a, 0, 24, 0);
+  tank.castShadow = true;
+  g.add(tank);
+  const cap = new THREE.Mesh(GEO.cone, mat(0x6b4a2a));
+  cap.scale.set(28, 10, 28);
+  cap.position.y = 39;
+  g.add(cap);
+  return g;
+}
+
+/**
+ * Street props: lamp, hydrant, container, tree, billboard, bus stop,
+ * bench, traffic light, planter. Each is one small group the renderer
+ * drops at the city's prop positions.
+ */
 export function makeProp(kind, color = 0x8a8f96) {
   const g = new THREE.Group();
   if (kind === 'lamp') {
@@ -230,6 +277,41 @@ export function makeProp(kind, color = 0x8a8f96) {
     const canopy = sphere(16, 0x4e7d3a, 0, 34, 0);
     canopy.castShadow = true;
     g.add(trunk, canopy);
+  } else if (kind === 'billboard') {
+    // Two posts, a tall panel, and a glowing face — the Strip's neon.
+    g.add(box(4, 44, 4, 0x3a3f46, -16, 22, 0));
+    g.add(box(4, 44, 4, 0x3a3f46, 16, 22, 0));
+    const face = box(52, 26, 2, color, 0, 56, 0, { emissive: color });
+    face.castShadow = true;
+    g.add(face);
+    g.add(box(52, 3, 3, 0xffe9a0, 0, 70, 0, { emissive: 0xffe9a0 }));
+  } else if (kind === 'busStop') {
+    // Shelter: posts, a roof, and a bench under it.
+    for (const [px, pz] of [[-18, -8], [18, -8], [-18, 8], [18, 8]]) {
+      g.add(box(2, 26, 2, 0x3a3f46, px, 13, pz));
+    }
+    g.add(box(44, 2, 22, 0x3f8f7f, 0, 27, 0));
+    g.add(box(36, 3, 10, 0x8a6a4a, 0, 12, 0));
+    g.add(box(3, 12, 3, 0x8a6a4a, -16, 6, 0));
+    g.add(box(3, 12, 3, 0x8a6a4a, 16, 6, 0));
+  } else if (kind === 'bench') {
+    g.add(box(34, 3, 10, 0x8a6a4a, 0, 12, 0));
+    g.add(box(34, 10, 2, 0x8a6a4a, 0, 20, -5));
+    g.add(box(3, 12, 3, 0x3a3f46, -14, 6, 0));
+    g.add(box(3, 12, 3, 0x3a3f46, 14, 6, 0));
+  } else if (kind === 'trafficLight') {
+    const pole = cyl(2, 52, 0x3a3f46, 0, 26, 0);
+    g.add(pole);
+    const housing = box(8, 22, 6, 0x22262b, 0, 50, 0);
+    g.add(housing);
+    g.add(box(5, 5, 2, 0xd94f3d, 0, 56, 3.5, { emissive: 0xaa0000 }));
+    g.add(box(5, 5, 2, 0xe0a83c, 0, 50, 3.5, { emissive: 0xaa8800 }));
+    g.add(box(5, 5, 2, 0x4caf6d, 0, 44, 3.5, { emissive: 0x008800 }));
+  } else if (kind === 'planter') {
+    g.add(box(22, 10, 22, 0x7a5a38, 0, 5, 0));
+    const bush = sphere(9, 0x4e7d3a, 0, 16, 0);
+    bush.castShadow = true;
+    g.add(bush);
   }
   return g;
 }

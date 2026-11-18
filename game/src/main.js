@@ -219,10 +219,12 @@ function runGame() {
         if (screen !== SCREEN_PLAY) break;
       }
     } else if (screen === SCREEN_TITLE) {
-      // Attract mode: traffic keeps moving behind the title.
+      // Attract mode: traffic keeps moving behind the title. The world
+      // gets a still hand — no input, so the city just lives.
+      const still = { up: false, down: false, left: false, right: false, sprint: false, enter: false, shoot: false, interact: false, aimX: 0, aimY: 0 };
       accumulator += dt;
       while (accumulator >= STEP) {
-        world.step(STEP, { up: false, down: false, left: false, right: false, sprint: false, enter: false, shoot: false, interact: false, aimX: 0, aimY: 0 });
+        world.step(STEP, still);
         accumulator -= STEP;
       }
     } else {

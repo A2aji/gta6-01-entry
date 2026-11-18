@@ -1,10 +1,11 @@
 // Solmar Bay — the renderer (three.js).
 // A WebGL scene for the world and a 2D canvas overlay for the HUD, minimap
 // and screens. World (x, y) maps to three.js (x - 1280, 0, y - 960);
-// a world angle θ becomes rotation.y = -θ.
+// a world angle θ becomes rotation.y = -θ. Entity meshes are pooled and
+// reused — nothing is allocated inside the frame loop.
 import * as THREE from '../vendor/three.module.min.js';
-import { CITY, FONT, PALETTE, WORLD } from './config.js';
-import { makeBuilding, makeCar, makeHelicopter, makePalm, makePerson, makeProp, box, cyl } from './models.js';
+import { CITY, DENSITY, FONT, PALETTE, WORLD } from './config.js';
+import { makeBuilding, makeCar, makeHelicopter, makePalm, makePerson, makeProp, makeWaterTower, box, cyl } from './models.js';
 
 const CX = WORLD.width / 2;
 const CZ = WORLD.height / 2;
@@ -61,7 +62,6 @@ export function createRenderer(canvas, hudCanvas) {
   const personMeshes = new Map();
   const pickupMeshes = new Map();
   let heliMesh = null;
-  let heliRotor = null;
 
   const PARTICLE_MAX = 400;
   const pGeo = new THREE.BufferGeometry();
@@ -69,7 +69,7 @@ export function createRenderer(canvas, hudCanvas) {
   const pCol = new Float32Array(PARTICLE_MAX * 3);
   pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
   pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const pMat = new THREE.PointsMaterial({ size: 7, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false });
+  const pMat = new THREE.PointsMaterial({ size: 5, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false });
   const points = new THREE.Points(pGeo, pMat);
   points.frustumCulled = false;
   scene.add(points);
@@ -220,12 +220,18 @@ export function createRenderer(canvas, hudCanvas) {
     });
     scene.add(dashMesh);
 
-    // Buildings.
+    // Buildings: shops get awnings, some windows glow at dusk.
     const facades = [0xe8dcc0, 0xd9c4a5, 0xcbb59a, 0xe0cfae];
     for (const b of city.buildings) {
-      const mesh = makeBuilding(b.w, b.h, 40 + b.height * 30, b.roof, facades[(b.x + b.y) % facades.length | 0] || 0xe8dcc0);
+      const mesh = makeBuilding(b.w, b.h, 40 + b.height * 30, b.roof, facades[(b.x + b.y) % facades.length | 0] || 0xe8dcc0, b.shop, b.lit);
       mesh.position.set(toX(b.x + b.w / 2), 0, toZ(b.y + b.h / 2));
       scene.add(mesh);
+    }
+    // Rooftop water towers on the tall buildings.
+    for (const t of city.waterTowers || []) {
+      const tower = makeWaterTower();
+      tower.position.set(toX(t.x), t.roofY, toZ(t.y));
+      scene.add(tower);
     }
 
     // Park: pond and trees.
@@ -238,24 +244,47 @@ export function createRenderer(canvas, hudCanvas) {
       scene.add(tree);
     }
 
-    // Palms along the beach and the Strip.
-    for (let x = 120; x < WORLD.width - 120; x += 160) {
+    // Plaza: pale paving plus a fountain at its heart.
+    const plaza = city.plaza;
+    const plazaSlab = new THREE.Mesh(new THREE.PlaneGeometry(plaza.w, plaza.h), new THREE.MeshLambertMaterial({ color: 0xd9cbb0 }));
+    plazaSlab.rotation.x = -Math.PI / 2;
+    plazaSlab.position.set(toX(plaza.x + plaza.w / 2), 0.7, toZ(plaza.y + plaza.h / 2));
+    plazaSlab.receiveShadow = true;
+    scene.add(plazaSlab);
+    const fountain = cyl(30, 4, 0x8a8f96, toX(plaza.x + plaza.w / 2), 2, toZ(plaza.y + plaza.h / 2));
+    scene.add(fountain);
+    const fountainWater = cyl(26, 1.5, 0x2e7f9e, toX(plaza.x + plaza.w / 2), 4.5, toZ(plaza.y + plaza.h / 2));
+    scene.add(fountainWater);
+
+    // Palms: a fuller line along the beach and both sides of the Strip.
+    for (let x = 120; x < WORLD.width - 120; x += DENSITY.palmsBeachStep) {
       const palm = makePalm();
       palm.position.set(toX(x), 0, toZ(CITY.beachTop - 24));
       scene.add(palm);
     }
-    for (let y = 400; y < CITY.beachTop - 100; y += 320) {
-      const palm = makePalm();
-      palm.position.set(toX(1280 - 44), 0, toZ(y));
-      scene.add(palm);
+    for (let y = 400; y < CITY.beachTop - 100; y += DENSITY.palmsStripStep) {
+      const palmL = makePalm();
+      palmL.position.set(toX(1280 - 44), 0, toZ(y));
+      scene.add(palmL);
+      const palmR = makePalm();
+      palmR.position.set(toX(1280 + 44), 0, toZ(y + 160));
+      scene.add(palmR);
     }
 
-    // Street lamps at intersections.
+    // Street lamps at every intersection now, not every other one.
     for (const n of city.roadGraph.nodes) {
-      if ((n.x + n.y) % 640 !== 0) continue;
       const lamp = makeProp('lamp');
       lamp.position.set(toX(n.x + 40), 0, toZ(n.y + 40));
       scene.add(lamp);
+    }
+
+    // Street props from the city data: hydrants, benches, billboards,
+    // bus stops, traffic lights, planters.
+    for (const prop of city.props || []) {
+      const mesh = makeProp(prop.kind, prop.color);
+      mesh.position.set(toX(prop.x), 0, toZ(prop.y));
+      if (prop.angle) mesh.rotation.y = prop.angle;
+      scene.add(mesh);
     }
 
     // Docks: containers + a crane silhouette (two posts + beam).
@@ -402,7 +431,6 @@ export function createRenderer(canvas, hudCanvas) {
     const h = state.helicopter;
     if (!heliMesh) {
       heliMesh = makeHelicopter();
-      heliRotor = heliMesh.userData.rotor;
       scene.add(heliMesh);
     }
     heliMesh.visible = h.active;
@@ -463,11 +491,19 @@ export function createRenderer(canvas, hudCanvas) {
     // chase cam puts the pursuer between the camera and the player) and
     // over a pedestrian standing by the camera, low enough to stay a chase
     // cam and not a top-down map. The steeper pitch also keeps empty sky
-    // out of the top of the frame.
-    const dist = driving ? 130 : 180;
-    const height = driving ? 68 : 66;
-    const wantX = toX(target.x) - fx * dist;
-    const wantZ = toZ(target.y) - fz * dist;
+    // out of the top of the frame. The camera also pulls back as the heat
+    // rises: a four-star chase needs room to show the cars behind you.
+    const heat = state.wanted;
+    const dist = driving ? 130 + heat * 10 : 180;
+    const height = driving ? 68 + heat * 3 : 66;
+    // At 3+ stars the camera also slides sideways off the driving line:
+    // a pursuer ramming from directly behind would otherwise sit exactly
+    // between the camera and the player and fill the frame. Offset, the
+    // chase reads as a three-quarter shot — player on one side, the
+    // cruisers closing in on the other.
+    const side = driving && heat >= 3 ? 55 : 0;
+    const wantX = toX(target.x) - fx * dist - fz * side;
+    const wantZ = toZ(target.y) - fz * dist + fx * side;
     const wantY = height;
     const k = 1 - Math.exp(-dt * 4.5);
     camState.x += (wantX - camState.x) * k;
@@ -652,9 +688,10 @@ export function createRenderer(canvas, hudCanvas) {
     const w = 560;
     const h = 150 + lines.length * 30;
     const x = (view.w - w) / 2;
-    // Lifted above centre so the player's car and the street stay visible
-    // below the panel (the complete screen is a showcase, not a curtain).
-    const y = (view.h - h) / 2 - 60;
+    // Lifted well above centre so the player's car and the street stay
+    // visible below the panel (the complete screen is a showcase, not a
+    // curtain — the vault car must read under JOB DONE, not behind it).
+    const y = (view.h - h) / 2 - 130;
     panel(x, y, w, h, 0.9);
     text(title, view.w / 2, y + 30, 48, PALETTE.text, 'center', '800');
     lines.forEach((line, i) => text(line, view.w / 2, y + 92 + i * 30, 20, PALETTE.muted, 'center'));

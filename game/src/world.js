@@ -1,6 +1,7 @@
-// Solmar Bay — the simulation. No drawing and no browser in it: the player,
-// cars, traffic, pedestrians, police, wanted level, combat and pickups.
-// step() advances one fixed step and returns what happened as bit flags.
+// Solmar Bay — the simulation. No drawing and no browser in it: the
+// player, cars, traffic, pedestrians, police, the helicopter, the wanted
+// level, combat and pickups. step() advances one fixed step and returns
+// what happened as bit flags, so the audio and the mission logic can react.
 import { CAR, CITY, PEDESTRIAN, PLAYER, POLICE, TRAFFIC, WANTED, WORLD } from './config.js';
 import { inBuilding, nearestNode, onRoad } from './city.js';
 import { int, pick, range } from './random.js';
@@ -162,6 +163,11 @@ export function createWorld(random, city) {
     }
     // One parked sports car near the spawn, for the first steal.
     spawnVehicle(city.playerSpawn.x + 120, city.playerSpawn.y + 40, 0, 'sports', '#d94f3d', null);
+    // Roadside parked cars: stealable, and they make the streets look
+    // lived-in. They are driverless, so traffic ignores them.
+    for (const spot of city.parkedSpots || []) {
+      spawnVehicle(spot.x, spot.y, spot.angle, pick(random, CAR_KINDS), pick(random, city.carColors), null);
+    }
     for (let i = 0; i < PEDESTRIAN.count; i += 1) {
       const s = city.pedSpawns[int(random, 0, city.pedSpawns.length - 1)];
       spawnPedestrian(s.x, s.y);
@@ -302,10 +308,11 @@ export function createWorld(random, city) {
       const want = angleTo(v.x, v.y, node.x, node.y);
       const diff = angleDiff(want, v.angle);
       v.angle += Math.max(-2.4 * dt, Math.min(2.4 * dt, diff));
-      // Slow down for a car ahead.
+      // Slow down for a car ahead — but never for a parked one (driver
+      // null): parked cars sit at the curb, out of the driving lane.
       let blocked = false;
       for (const other of state.vehicles) {
-        if (other === v) continue;
+        if (other === v || other.driver === null) continue;
         const dx = other.x - v.x;
         const dy = other.y - v.y;
         const ahead = dx * Math.cos(v.angle) + dy * Math.sin(v.angle);

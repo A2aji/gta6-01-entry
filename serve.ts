@@ -30,13 +30,13 @@ createServer((req, res) => {
     res.writeHead(400).end('bad request');
     return;
   }
-  if (path.endsWith('/')) path += 'index.html';
+  if (path.endsWith('/')) path = '/index.html';
   const file = resolve(join(root, normalize(path)));
   if (file !== root && !file.startsWith(root + sep)) {
     res.writeHead(403).end('forbidden');
     return;
   }
-  let size = 0;
+  let size: number;
   try {
     const st = statSync(file);
     if (!st.isFile()) throw new Error('not a file');
@@ -51,6 +51,4 @@ createServer((req, res) => {
     'cache-control': 'no-store',
   });
   createReadStream(file).pipe(res);
-}).listen(port, '127.0.0.1', () => {
-  console.log(`Solmar Bay at http://localhost:${port}`);
-});
+}).listen(port, '127.0.0.1', () => console.log(`serving ${root} on http://localhost:${port}`));

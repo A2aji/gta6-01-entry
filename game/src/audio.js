@@ -34,7 +34,6 @@ export function createAudio() {
   let engineGain = null;
   let sirenOsc = null;
   let sirenGain = null;
-  let sirenTimer = null;
   let seqTimer = null;
   let nextNoteTime = 0;
   let step = 0;
@@ -74,7 +73,7 @@ export function createAudio() {
     sirenOsc.connect(sirenGain);
     sirenGain.connect(master);
     sirenOsc.start();
-    sirenTimer = setInterval(() => {
+    setInterval(() => {
       if (!ctx || sirenGain.gain.value === 0) return;
       sirenOsc.frequency.value = sirenOsc.frequency.value > 800 ? 700 : 950;
     }, 420);

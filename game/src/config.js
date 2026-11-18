@@ -1,17 +1,19 @@
-// Solmar Bay — every tuning number and colour, in one place.
-// The world is a fixed 2560x1920 logical area. The renderer scales the
-// camera to the window, so nothing below depends on the screen size.
+// Solmar Bay — the single source of truth for tuning and colour.
+// Everything the sim and the renderer need is a constant here, so a
+// balance change is one edit, not a hunt through the game. The world is a
+// fixed 2560x1920 logical area; the camera scales to the window, so none
+// of the numbers below depends on the screen size.
 
-/** Logical size of the city. */
+/** Logical size of the city, in world units. */
 export const WORLD = { width: 2560, height: 1920 };
 
-/** Reference frame the screenshots are taken at. */
+/** The frame the screenshots are staged and shot at. */
 export const VIEW = { width: 1280, height: 720 };
 
-/** One simulation step, in seconds. */
+/** One fixed simulation step, in seconds. */
 export const STEP = 1 / 60;
 
-/** The road grid: centrelines, 64 wide, with blocks between them. */
+/** The road grid: centrelines 64 wide, blocks between them. */
 export const CITY = {
   roadWidth: 64,
   verticalRoads: [320, 640, 960, 1280, 1600, 1920, 2240],
@@ -19,7 +21,23 @@ export const CITY = {
   beachTop: 1760, // south edge: sand, then the sea
   riverLeft: 2400, // east edge: river strip, bridged on the y=960 road
   parkBlock: { x: 960, y: 640 }, // block corner where the park sits
+  plazaBlock: { x: 1280, y: 960 }, // downtown open square
   docks: { x: 0, y: 1280, width: 320, height: 320 },
+};
+
+/** How crowded the streets feel. Bumped for the rebuild: the city read
+ *  thin in the contact sheet, so more cars, more people, more parked cars. */
+export const DENSITY = {
+  buildingsPerBlock: [2, 4], // was 1–3: blocks now fill out
+  downtownHeight: [3, 5], // towers around the plaza, 1–3 elsewhere
+  trafficCars: 36, // was 26
+  pedestrians: 52, // was 34
+  parkedCars: 14, // roadside cars, stealable, never blocking traffic
+  carSpawnPoints: 80,
+  pedSpawnPoints: 110,
+  palmsBeachStep: 120, // was 160: a fuller palm line
+  palmsStripStep: 240, // was 320
+  lampsEvery: 1, // every intersection, was every other
 };
 
 export const PLAYER = {
@@ -48,14 +66,14 @@ export const CAR = {
 };
 
 export const TRAFFIC = {
-  count: 26,
+  count: DENSITY.trafficCars,
   speed: 150,
   speedJitter: 40,
   minGap: 70,
 };
 
 export const PEDESTRIAN = {
-  count: 34,
+  count: DENSITY.pedestrians,
   speed: 55,
   fleeSpeed: 150,
   fleeRadius: 220,

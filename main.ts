@@ -46,9 +46,11 @@ writeFileSync(
 
 // Sanity-check the hand-in: the dossier must exist and stay under its text
 // cap, and the build must be deterministic — run it twice and the two
-// dossier.json files should be byte-identical.
+// dossier.json files should be byte-identical. The cap here is the text cap
+// plus room for the four screenshots and the dossier's own overhead.
 const dossierBytes = readFileSync(dossierPath).length;
-if (dossierBytes > 163840 + 4 * 262144 + 65536) {
-  throw new Error(`dossier.json unexpectedly large: ${dossierBytes} bytes`);
+const dossierCeiling = 163840 + 4 * 262144 + 65536;
+if (dossierBytes > dossierCeiling) {
+  throw new Error(`dossier.json unexpectedly large: ${dossierBytes} bytes (ceiling ${dossierCeiling})`);
 }
 console.log(`wrote ${dossierPath} (${dossierBytes} bytes)`);

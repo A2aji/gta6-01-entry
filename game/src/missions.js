@@ -1,7 +1,7 @@
 // Solmar Bay — the story. Six missions in a chain, each a small state
 // machine: a waypoint to reach, something to do there, and a reward.
 // The world module owns the simulation; missions only read it and ask it
-// to spawn things.
+// to spawn things (gang members, the vault car, wanted heat).
 import { MISSIONS } from './config.js';
 
 const DIALOGUE = {
@@ -31,6 +31,8 @@ const DIALOGUE = {
     ['JACE', 'Sunset Keys. Let us finish this.'],
   ],
 };
+
+const ORDER = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
 
 /**
  * What "done" means for each mission's phases.
@@ -168,8 +170,7 @@ export function createMissions(world, city) {
 
   /** The next mission in the chain, or null when the story is done. */
   function next() {
-    const order = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
-    for (const id of order) {
+    for (const id of ORDER) {
       if (!missions.completed.includes(id)) return id;
     }
     return null;

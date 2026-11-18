@@ -24,6 +24,11 @@ const INTERACT_KEYS = new Set(['KeyF']);
 const RADIO_KEYS = new Set(['KeyR']);
 const MUTE_KEYS = new Set(['KeyM']);
 
+function isMoveKey(code) {
+  return UP_KEYS.has(code) || DOWN_KEYS.has(code) || LEFT_KEYS.has(code)
+    || RIGHT_KEYS.has(code) || HANDBRAKE_KEYS.has(code);
+}
+
 export function createInput(target) {
   const held = { up: false, down: false, left: false, right: false, sprint: false, handbrake: false };
   let queued = 0;
@@ -51,10 +56,7 @@ export function createInput(target) {
     else if (MUTE_KEYS.has(event.code)) { if (!event.repeat) queued |= ACTION_MUTE; }
     else return;
     // Movement keys would scroll the page; swallow them.
-    if (UP_KEYS.has(event.code) || DOWN_KEYS.has(event.code) || LEFT_KEYS.has(event.code)
-      || RIGHT_KEYS.has(event.code) || HANDBRAKE_KEYS.has(event.code)) {
-      event.preventDefault();
-    }
+    if (isMoveKey(event.code)) event.preventDefault();
   });
   window.addEventListener('keyup', (event) => {
     if (UP_KEYS.has(event.code)) held.up = false;

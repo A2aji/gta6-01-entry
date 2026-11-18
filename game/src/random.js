@@ -1,6 +1,7 @@
 // Seeded randomness for Solmar Bay. One seed builds the same city and the
-// same screenshot scenes every time, so a run is reproducible.
-// mulberry32 — tiny, fast, and plenty good enough for a game.
+// same screenshot scenes every time, so a run is reproducible and the
+// screenshots can be re-shot exactly. mulberry32 is tiny, fast, and plenty
+// good enough for a game — no crypto needed here.
 
 /** A generator function returning floats in [0, 1). */
 export function createRandom(seed) {
@@ -27,6 +28,11 @@ export function int(random, min, max) {
 /** One element, chosen at random. */
 export function pick(random, items) {
   return items[Math.floor(random() * items.length)];
+}
+
+/** True with the given probability (0–1). */
+export function chance(random, p) {
+  return random() < p;
 }
 
 /** A shuffled copy (Fisher-Yates); the input array is untouched. */

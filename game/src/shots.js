@@ -30,16 +30,15 @@ function cover(world, missions) {
   // Ninety steps of clean driving, then the heat comes on at the player's
   // CURRENT spot. The police spawn one a second, so the car sits still for
   // two and a half seconds while they close in — then it drives off. The
-  // long final run pulls the player away from the rammers, so the cruisers
-  // trail behind the car instead of filling the camera, and the run ends
-  // mid-city with the chase behind.
+  // final run is shorter than before, so it ends around downtown (y≈1100)
+  // where the towers and the billboards are, not out in the thin south.
   drive(state, world, 90, { ...IDLE, up: true });
   state.wanted = 3;
   state.crimeTimer = 0;
   state.seenTimer = 0;
   state.lastKnown = { x: state.player.x, y: state.player.y };
   drive(state, world, 150, IDLE);
-  drive(state, world, 110, { ...IDLE, up: true });
+  drive(state, world, 60, { ...IDLE, up: true });
   return { screen: 'play' };
 }
 
@@ -51,11 +50,25 @@ function title(world) {
 
 function street(world, missions) {
   const { state } = world;
-  missions.start('m2');
+  // The shootout mission, on the Strip — the densest street in the city,
+  // with buildings, billboards and bus stops on both sides. The docks were
+  // too empty: a third of that frame was sea and sky. The fight is staged
+  // ON the road, facing south down the Strip: the camera sits behind the
+  // player on the open road, so no building ever fills the frame. (The
+  // first version put the player beside a block and the camera inside it.)
+  // missions.start('m3') already spawns the gang at the Strip — no extra
+  // spawn here, or the crew doubles.
+  missions.start('m3');
   const w = missions.current.waypoint;
-  state.player.x = w.x - 120;
-  state.player.y = w.y + 60;
-  world.spawnGang(w.x - 60, w.y - 40, 3);
+  state.player.x = 1280;
+  state.player.y = 420;
+  state.player.angle = Math.PI / 2; // south, down the Strip
+  // Spread the crew across the road ahead of the player, in a loose line.
+  state.gang.forEach((g, i) => {
+    g.x = 1258 + i * 15;
+    g.y = 530 + (i % 2) * 22;
+  });
+  missions.current.waypoint = { x: 1280, y: 540, name: 'The Strip' };
   // Less than a second of the shootout: aim at the nearest gang member and
   // fire. Muzzle flash, a wounded crew member, and the wanted stars all
   // show — and the crew is still standing, so the frame reads as a fight,
